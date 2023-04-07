@@ -146,10 +146,14 @@ public class CLA {
                         inputLine = in.readLine();
                         if (inputLine != null) {
                             System.out.println("Message recieved :" + inputLine);
+
                             //create validation number for voter and send to them
                             String vc = generateVerfication();
+
                             //save new validation number to list
                             CLA.addToFile(inputLine + " " + vc);
+
+                            //Send verification number to CTF
                             out.println(vc);
                             System.out.println("vc sent:" + vc);
                             break;
