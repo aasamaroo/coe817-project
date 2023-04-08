@@ -1,5 +1,3 @@
-package coe817project;
-
 import java.security.*;
 import java.io.*;
 import java.text.*;
@@ -11,8 +9,8 @@ import javax.crypto.spec.*;
 
 public class CLA {
 
-    Cipher enc_cip;
-    Cipher dec_cip;
+    static Cipher enc_cip;
+    static Cipher dec_cip;
     private Socket ctfSocket;
     private Socket clientSocket;
     private PrintWriter ctfOut;
@@ -33,13 +31,14 @@ public class CLA {
     private static Integer sinNum;
 
     CLA(SecretKey key) throws Exception {
-        enc_cip = Cipher.getInstance("DES");
-        dec_cip = Cipher.getInstance("DES");
-        enc_cip.init(Cipher.ENCRYPT_MODE, key);
-        dec_cip.init(Cipher.DECRYPT_MODE, key);
+        enc_cip = Cipher.getInstance("DES/CBC/PKCS5Padding");
+        dec_cip = Cipher.getInstance("DES/CBC/PKCS5Padding");
+        IvParameterSpec iv2 = new IvParameterSpec(new byte[8]);
+        enc_cip.init(Cipher.ENCRYPT_MODE, key, iv2);
+        dec_cip.init(Cipher.DECRYPT_MODE, key, iv2);
     }
 
-    public String encrypt(String encryptTxt) throws Exception {
+    public static String encrypt(String encryptTxt) throws Exception {
         byte[] utf8 = encryptTxt.getBytes("UTF8");
 
         byte[] enc = enc_cip.doFinal(utf8);
@@ -47,7 +46,7 @@ public class CLA {
         return Base64.getEncoder().encodeToString(enc);
     }
 
-    public String decrypt(String decryptTxt) throws Exception {
+    public static String decrypt(String decryptTxt) throws Exception {
         byte[] dec = Base64.getDecoder().decode(decryptTxt);
 
         byte[] utf8 = dec_cip.doFinal(dec);
@@ -116,11 +115,12 @@ public class CLA {
 
     public static void main(String[] args) {
         int portNumber = 6969;
+        int portNumberServer = 9090;
         try {
-            String encodedKey = "TW9ua2U2OQ==";
+            String encodedKey = "TW9ua2U=";
             System.out.println("{"+encodedKey+"}");
-            byte[] decodedKey = Base64.getDecoder().decode(encodedKey);
-            SecretKey originalKey = new SecretKeySpec(decodedKey, 0, decodedKey.length, "DES");
+            byte[] decodedKey = encodedKey.getBytes();
+            SecretKey originalKey = new SecretKeySpec(decodedKey, "DES");
             System.out.println(originalKey);
 
             CLA x = new CLA(originalKey);
@@ -130,31 +130,46 @@ public class CLA {
                 try {
 
                     //connect to CTF
-                    x.ctfSocket = new Socket("localhost", portNumber);
+                    x.ctfSocket = new Socket("localhost", portNumberServer);
                     x.ctfOut = new PrintWriter(x.ctfSocket.getOutputStream(), true);
-                    x.ctfIn = new BufferedReader(new InputStreamReader(x.socket.getInputStream()));
+                    x.ctfIn = new BufferedReader(new InputStreamReader(x.ctfSocket.getInputStream())); //Might need this for acknowledgement
+                    
+                    //Test
+                    //x.ctfOut.println("CLA");
 
                     //connect to Client
-                    x.clientSocket = new Socket("localhost", portNumber);
+                    ServerSocket client = new ServerSocket(portNumber);
+                    x.clientSocket = client.accept();
                     x.clientOut = new PrintWriter(x.clientSocket.getOutputStream(), true);
                     x.clientIn = new BufferedReader(new InputStreamReader(x.clientSocket.getInputStream()));
                     //wait for voter to request validation number
                     String inputLine;
                     System.out.println("Waiting for messages");
+
                     while (true) {
                         inputLine = x.clientIn.readLine();
                         if (inputLine != null) {
-                            System.out.println("Message recieved :" + inputLine);
+                            String input = decrypt(inputLine);
+                            System.out.println("Message received :" + input);
+
+                            if (voters.contains(input)) //Do not allow duplicate voters
+                                break;
+                            voters.add((input)); 
+                            //names.add((input)); Not sure what the client message format is
+                            //sin.add((input)); Not sure what the client message format is
+
 
                             //create validation number for voter and send to them
                             String vc = generateVerfication();
 
                             //save new validation number to list
-                            CLA.addToFile(inputLine + " " + vc);
+                            CLA.addToFile(input + " " + vc);
 
                             //Send verification number to CTF and client
-                            x.ctfOut.println(vc);
-                            x.clientOut.println(vc);
+                            String encryptedOut = encrypt(vc);
+                            x.ctfOut.println("CLA"); //Send identity first
+                            x.ctfOut.println(encryptedOut);
+                            x.clientOut.println(encryptedOut);
                             System.out.println("vc sent:" + vc);
                             break;
                         } else {

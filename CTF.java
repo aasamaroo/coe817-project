@@ -28,8 +28,8 @@ public class CTF extends Thread{
     static Map<String, Boolean> validation_list = new HashMap<String, Boolean>();
     static Map<String, Integer> candidate_list = new HashMap<String, Integer>();
     static Map<String, String> voter_list = new HashMap<String, String>();
-    static String encodedKey = "TW9ua2U2OQ==";
-    static String clientKey = "P3u642U5F2==";
+    static String encodedKey = "TW9ua2U=";
+    static String clientKey = "P3u6452=";
     static boolean lastMessage = false;
     private Socket socket = null;
 
@@ -50,13 +50,15 @@ public class CTF extends Thread{
                     new InputStreamReader(System.in));
         
             String connectionLine = in.readLine();
+            System.out.println(connectionLine);        
             if (connectionLine.equalsIgnoreCase("CLA")) {
-                byte[] decodedKey = Base64.getDecoder().decode(encodedKey);
-                SecretKey originalKey = new SecretKeySpec(decodedKey, 0, decodedKey.length, "DES");
-                Cipher decrypt = Cipher.getInstance("DES");
-                decrypt.init(Cipher.DECRYPT_MODE, originalKey);
-                Cipher encrypt = Cipher.getInstance("DES");
-                encrypt.init(Cipher.ENCRYPT_MODE, originalKey);
+                byte[] decodedKey = encodedKey.getBytes();
+                SecretKey originalKey = new SecretKeySpec(decodedKey, "DES");
+                Cipher decrypt = Cipher.getInstance("DES/CBC/PKCS5Padding");
+                IvParameterSpec iv2 = new IvParameterSpec(new byte[8]);
+                decrypt.init(Cipher.DECRYPT_MODE, originalKey, iv2);
+                Cipher encrypt = Cipher.getInstance("DES/CBC/PKCS5Padding");
+                encrypt.init(Cipher.ENCRYPT_MODE, originalKey, iv2);
 
                 if (!candidate_list.containsKey("Cungang")) {
                     candidate_list.put("Cungang", 0);
@@ -120,13 +122,20 @@ public class CTF extends Thread{
                     if (lastMessage == true)
                         break;
                 }
+                String output = null;
                 for (Map.Entry<String, Integer> set : candidate_list.entrySet()) {
                     System.out.println(set.getKey() + " = " + set.getValue());
 
                     String message = set.getKey() + "|" + set.getValue();
-                    byte[] encrypted = encrypt.doFinal(message.getBytes());
-                    out.println(Base64.getEncoder().encodeToString(encrypted));
+
+                    if (output == null)
+                        output = message;
+                    else 
+                        output += "|" + message;
+
                 }
+                byte[] encrypted = encrypt.doFinal(output.getBytes());
+                out.println(Base64.getEncoder().encodeToString(encrypted)); //Sends results to client
             }
 
             System.out.println("Done");
@@ -137,3 +146,4 @@ public class CTF extends Thread{
         }
     }
 }
+
