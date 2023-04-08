@@ -13,11 +13,15 @@ public class CLA {
 
     Cipher enc_cip;
     Cipher dec_cip;
-    private Socket socket = null;
+    private Socket ctfSocket;
+    private Socket clientSocket;
+    private PrintWriter ctfOut;
+    private PrintWriter clientOut;
+    private BufferedReader ctfIn;
+    private BufferedReader clientIn;
+
 
     private static final File file = new File(System.getProperty("user.dir") + "\\coe817-project\\CLA.txt");
-    private PrintWriter out;
-    private BufferedReader in;
     private static Scanner s;
 
     private static final ArrayList<String> voters = new ArrayList<>();
@@ -124,15 +128,21 @@ public class CLA {
             while (true) {
                 //connect to voter
                 try {
-                    x.socket = new Socket("localhost", portNumber);
-                    x.out = new PrintWriter(clientSocket.getOutputStream(), true);
-                    x.in = new BufferedReader(new InputStreamReader(x.socket.getInputStream()));
 
+                    //connect to CTF
+                    x.ctfSocket = new Socket("localhost", portNumber);
+                    x.ctfOut = new PrintWriter(x.ctfSocket.getOutputStream(), true);
+                    x.ctfIn = new BufferedReader(new InputStreamReader(x.socket.getInputStream()));
+
+                    //connect to Client
+                    x.clientSocket = new Socket("localhost", portNumber);
+                    x.clientOut = new PrintWriter(x.clientSocket.getOutputStream(), true);
+                    x.clientIn = new BufferedReader(new InputStreamReader(x.clientSocket.getInputStream()));
                     //wait for voter to request validation number
                     String inputLine;
                     System.out.println("Waiting for messages");
                     while (true) {
-                        inputLine = x.in.readLine();
+                        inputLine = x.clientIn.readLine();
                         if (inputLine != null) {
                             System.out.println("Message recieved :" + inputLine);
 
@@ -142,8 +152,9 @@ public class CLA {
                             //save new validation number to list
                             CLA.addToFile(inputLine + " " + vc);
 
-                            //Send verification number to CTF
-                            x.out.println(vc);
+                            //Send verification number to CTF and client
+                            x.ctfOut.println(vc);
+                            x.clientOut.println(vc);
                             System.out.println("vc sent:" + vc);
                             break;
                         } else {
@@ -152,13 +163,17 @@ public class CLA {
                     }
 
                     System.out.println("Done.\n");
-                    x.out.close();
-                    x.in.close();
+                    x.clientOut.close();
+                    x.clientIn.close();
+                    x.ctfOut.close();
+                    x.ctfIn.close();
                     System.out.println("Done.\n");
 
                 } catch (Exception e) {
-                    x.out.close();
-                    x.in.close();
+                    x.ctfOut.close();
+                    x.ctfIn.close();
+                    x.clientOut.close();
+                    x.clientIn.close();
                     System.out.println("Connection lost, closing connection.");
                 }
             }
