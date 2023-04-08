@@ -14,17 +14,13 @@ public class CLA {
     Cipher enc_cip;
     Cipher dec_cip;
     private Socket socket = null;
-    private ServerSocket server = null;
-    private DataInputStream in = null;
-    private DataOutputStream outStream = null;
 
     private static final File file = new File(System.getProperty("user.dir") + "\\coe817-project\\CLA.txt");
-    private static final File vc = new File("vc.txt");
-    private static FileWriter writer;
+    private PrintWriter out;
+    private BufferedReader in;
     private static Scanner s;
 
     private static final ArrayList<String> voters = new ArrayList<>();
-    private static final ArrayList<String> vcLog = new ArrayList<>();
     private static final ArrayList<String> names = new ArrayList<>();
     private static final ArrayList<Integer> sin = new ArrayList<>();
 
@@ -126,24 +122,17 @@ public class CLA {
             CLA x = new CLA(originalKey);
 
             while (true) {
-                ServerSocket serverSocket = null;
-                Socket clientSocket = null;
-                PrintWriter out = null;
-                BufferedReader in = null;
                 //connect to voter
                 try {
-                    serverSocket = new ServerSocket(portNumber);
-                    System.out.println("Waiting for connection ... ");
-                    clientSocket = serverSocket.accept();
-                    System.out.println("Connection established ...");
-                    out = new PrintWriter(clientSocket.getOutputStream(), true);
-                    in = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
+                    x.socket = new Socket("localhost", portNumber);
+                    x.out = new PrintWriter(clientSocket.getOutputStream(), true);
+                    x.in = new BufferedReader(new InputStreamReader(x.socket.getInputStream()));
 
                     //wait for voter to request validation number
                     String inputLine;
                     System.out.println("Waiting for messages");
                     while (true) {
-                        inputLine = in.readLine();
+                        inputLine = x.in.readLine();
                         if (inputLine != null) {
                             System.out.println("Message recieved :" + inputLine);
 
@@ -154,7 +143,7 @@ public class CLA {
                             CLA.addToFile(inputLine + " " + vc);
 
                             //Send verification number to CTF
-                            out.println(vc);
+                            x.out.println(vc);
                             System.out.println("vc sent:" + vc);
                             break;
                         } else {
@@ -163,17 +152,13 @@ public class CLA {
                     }
 
                     System.out.println("Done.\n");
-                    out.close();
-                    in.close();
-                    clientSocket.close();
-                    serverSocket.close();
+                    x.out.close();
+                    x.in.close();
                     System.out.println("Done.\n");
 
                 } catch (Exception e) {
-                    out.close();
-                    in.close();
-                    clientSocket.close();
-                    serverSocket.close();
+                    x.out.close();
+                    x.in.close();
                     System.out.println("Connection lost, closing connection.");
                 }
             }
