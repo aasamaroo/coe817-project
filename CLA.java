@@ -1,9 +1,12 @@
 import java.security.*;
 import java.io.*;
+import java.nio.file.*;
 import java.text.*;
 import java.util.*;
 import javax.crypto.*;
 import java.net.*;
+import java.nio.file.Files;
+import java.security.spec.*;
 import javax.crypto.spec.*;
 
 
@@ -17,6 +20,8 @@ public class CLA {
     private PrintWriter clientOut;
     private BufferedReader ctfIn;
     private BufferedReader clientIn;
+    private PrivateKey PR_cla;
+    public PublicKey PU_cla;
 
 
     private static final File file = new File(System.getProperty("user.dir") + "\\coe817-project\\CLA.txt");
@@ -30,29 +35,67 @@ public class CLA {
 
     private static Integer sinNum;
 
-    CLA(SecretKey key) throws Exception {
-        enc_cip = Cipher.getInstance("DES/CBC/PKCS5Padding");
-        dec_cip = Cipher.getInstance("DES/CBC/PKCS5Padding");
-        IvParameterSpec iv2 = new IvParameterSpec(new byte[8]);
-        enc_cip.init(Cipher.ENCRYPT_MODE, key, iv2);
-        dec_cip.init(Cipher.DECRYPT_MODE, key, iv2);
+    public CLA() throws Exception {
+         enc_cip = Cipher.getInstance("RSA/ECB/PKCS1Padding");
+         dec_cip = Cipher.getInstance("RSA/ECB/PKCS1Padding");
+     }
+
+
+     public String encrypt(String toEncode) throws Exception {
+
+        PublicKey publicKey = loadPublicKey();
+
+        Cipher cipher = Cipher.getInstance("RSA");
+        cipher.init(Cipher.ENCRYPT_MODE, publicKey);
+
+        byte[] bytes = cipher.doFinal(toEncode.getBytes("StandardCharsets.UTF_8"));
+        return new String(Base64.getEncoder().encode(bytes));
+        }
+
+    public String decrypt(String toDecode) throws Exception {
+
+        PrivateKey privateKey = loadPrivateKey();
+
+        Cipher cipher = Cipher.getInstance("RSA");
+        cipher.init(Cipher.DECRYPT_MODE, privateKey);
+
+        byte[] bytes = cipher.doFinal(Base64.getDecoder().decode(toDecode));
+        return new String(bytes);
+
+        }
+
+    public String encryptWithSharedKey(String input) throws NoSuchPaddingException, NoSuchAlgorithmException,
+        InvalidAlgorithmParameterException, InvalidKeyException,
+        BadPaddingException, IllegalBlockSizeException {
+
+        byte[] encodedKey = generateKeyToDistribute();
+        SecretKey key = new SecretKeySpec(encodedKey, "AES");
+
+        IvParameterSpec iv = new IvParameterSpec(new byte[16]);
+        Cipher cipher = Cipher.getInstance("AES");
+        cipher.init(Cipher.ENCRYPT_MODE, key, iv);
+        byte[] cipherText = cipher.doFinal(input.getBytes());
+        return Base64.getEncoder()
+            .encodeToString(cipherText);
     }
 
-    public static String encrypt(String encryptTxt) throws Exception {
-        byte[] utf8 = encryptTxt.getBytes("UTF8");
+    public String decryptWithSharedKey(String input) throws NoSuchPaddingException, NoSuchAlgorithmException,
+    InvalidAlgorithmParameterException, InvalidKeyException,
+    BadPaddingException, IllegalBlockSizeException {
 
-        byte[] enc = enc_cip.doFinal(utf8);
 
-        return Base64.getEncoder().encodeToString(enc);
+        byte[] encodedKey = generateKeyToDistribute();
+        SecretKey key = new SecretKeySpec(encodedKey, "AES");
+
+        IvParameterSpec iv = new IvParameterSpec(new byte[16]);
+        Cipher cipher = Cipher.getInstance("AES");
+        cipher.init(Cipher.DECRYPT_MODE, key, iv);
+        byte[] cipherText = cipher.doFinal(input.getBytes());
+        return new String(Base64.getDecoder()
+            .decode(cipherText));
+
     }
 
-    public static String decrypt(String decryptTxt) throws Exception {
-        byte[] dec = Base64.getDecoder().decode(decryptTxt);
-
-        byte[] utf8 = dec_cip.doFinal(dec);
-
-        return new String(utf8, "UTF8");
-    }
 
     public static void returnLine() throws FileNotFoundException {
 
@@ -112,28 +155,56 @@ public class CLA {
         writer.close();
     }
 
+    public byte[] generateKeyToDistribute() throws NoSuchAlgorithmException {
+        // Generate cryptographic key
+        KeyGenerator keyGenerator = KeyGenerator.getInstance("AES");
+
+        SecretKey secretKey = keyGenerator.generateKey();
+
+        byte[] encodedKey = secretKey.getEncoded();
+
+        return encodedKey;
+
+    }
+
+    private PublicKey loadPublicKey() throws IOException, NoSuchAlgorithmException, InvalidKeySpecException {
+
+        // reading from resource folder
+        byte[] publicKeyBytes = getClass().getResourceAsStream("/CLA.pub").readAllBytes();
+
+        KeyFactory publicKeyFactory = KeyFactory.getInstance("RSA");
+        EncodedKeySpec publicKeySpec = new X509EncodedKeySpec(publicKeyBytes);
+        PublicKey publicKey = publicKeyFactory.generatePublic(publicKeySpec);
+        return publicKey;
+        }
+
+
+        private PrivateKey loadPrivateKey() throws IOException, NoSuchAlgorithmException, InvalidKeySpecException {
+
+            // reading from resource folder
+            byte[] privateKeyBytes = getClass().getResourceAsStream("/CLA.priv").readAllBytes();
+
+            KeyFactory privateKeyFactory = KeyFactory.getInstance("RSA");
+            EncodedKeySpec privateKeySpec = new PKCS8EncodedKeySpec(privateKeyBytes);
+            PrivateKey privateKey = privateKeyFactory.generatePrivate(privateKeySpec);
+            return privateKey;
+            }
 
     public static void main(String[] args) {
         int portNumber = 6969;
         int portNumberServer = 9090;
         try {
-            String encodedKey = "TW9ua2U=";
-            System.out.println("{"+encodedKey+"}");
-            byte[] decodedKey = encodedKey.getBytes();
-            SecretKey originalKey = new SecretKeySpec(decodedKey, "DES");
-            System.out.println(originalKey);
-
-            CLA x = new CLA(originalKey);
+            CLA x = new CLA();
+            // x.PR_cla = x.loadPrivateKey();
+            // x.PU_cla = x.loadPublicKey();
 
             while (true) {
-                //connect to voter
                 try {
 
                     //connect to CTF
                     x.ctfSocket = new Socket("localhost", portNumberServer);
                     x.ctfOut = new PrintWriter(x.ctfSocket.getOutputStream(), true);
                     x.ctfIn = new BufferedReader(new InputStreamReader(x.ctfSocket.getInputStream())); //Might need this for acknowledgement
-                    
                     //Test
                     //x.ctfOut.println("CLA");
 
@@ -142,19 +213,46 @@ public class CLA {
                     x.clientSocket = client.accept();
                     x.clientOut = new PrintWriter(x.clientSocket.getOutputStream(), true);
                     x.clientIn = new BufferedReader(new InputStreamReader(x.clientSocket.getInputStream()));
+
                     //wait for voter to request validation number
                     String inputLine;
                     System.out.println("Waiting for messages");
 
                     while (true) {
+
                         inputLine = x.clientIn.readLine();
                         if (inputLine != null) {
-                            String input = decrypt(inputLine);
+                            String input = x.decrypt(inputLine);
                             System.out.println("Message received :" + input);
 
-                            if (voters.contains(input)) //Do not allow duplicate voters
+                            //Read Nonce1 from Client
+                            String[] parts = input.split("|");
+                            byte[] receivedNonce1 = parts[0].getBytes();
+
+                            //Create Nonce2 and send it along with Nonce1 to client to confirm identity
+                            byte[] nonce2 = new byte[16];
+                            SecureRandom secureRandom = new SecureRandom();
+                            secureRandom.nextBytes(nonce2);
+                            String replyToClient = new String(receivedNonce1) + "|" + new String(nonce2);
+                            String encodedReply = x.encrypt(replyToClient);
+                            x.clientOut.println(encodedReply);
+
+                            String input2 = x.decrypt(inputLine);
+                            System.out.print("Message received: " + input2);
+                            //Check if nonce matches up
+                            if(!input2.equals(nonce2.toString())){
                                 break;
-                            voters.add((input)); 
+                            }
+
+                            //Once we confirm the user, we can send out the session keys
+                            byte[] sessionKey = x.generateKeyToDistribute();
+                            x.ctfOut.println(sessionKey);
+                            x.clientOut.println(sessionKey);
+
+                            String input3 = x.decryptWithSharedKey(inputLine);
+                            if (voters.contains(input3)) //Do not allow duplicate voters
+                                break;
+                            voters.add((input3));
                             //names.add((input)); Not sure what the client message format is
                             //sin.add((input)); Not sure what the client message format is
 
@@ -166,7 +264,7 @@ public class CLA {
                             CLA.addToFile(input + " " + vc);
 
                             //Send verification number to CTF and client
-                            String encryptedOut = encrypt(vc);
+                            String encryptedOut = x.encryptWithSharedKey(vc);
                             x.ctfOut.println("CLA"); //Send identity first
                             x.ctfOut.println(encryptedOut);
                             x.clientOut.println(encryptedOut);
@@ -182,6 +280,7 @@ public class CLA {
                     x.clientIn.close();
                     x.ctfOut.close();
                     x.ctfIn.close();
+                    client.close();
                     System.out.println("Done.\n");
 
                 } catch (Exception e) {
