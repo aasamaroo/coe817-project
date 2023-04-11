@@ -20,8 +20,9 @@ public class CLA {
     private PrintWriter clientOut;
     private BufferedReader ctfIn;
     private BufferedReader clientIn;
-    private PrivateKey PR_cla;
-    public PublicKey PU_cla;
+    private String PR_cla;
+    public String PU_cla;
+    private String PU_client;
 
 
     private static final File file = new File(System.getProperty("user.dir") + "\\coe817-project\\CLA.txt");
@@ -41,9 +42,20 @@ public class CLA {
      }
 
 
-     public String encrypt(String toEncode) throws Exception {
+    public String encrypt(String toEncode) throws Exception {
 
         PublicKey publicKey = loadPublicKey();
+
+        Cipher cipher = Cipher.getInstance("RSA");
+        cipher.init(Cipher.ENCRYPT_MODE, publicKey);
+
+        byte[] bytes = cipher.doFinal(toEncode.getBytes("StandardCharsets.UTF_8"));
+        return new String(Base64.getEncoder().encode(bytes));
+    }
+
+    public String encryptWithClientPub(String toEncode) throws Exception {
+
+        PublicKey publicKey = loadClientPublicKey();
 
         Cipher cipher = Cipher.getInstance("RSA");
         cipher.init(Cipher.ENCRYPT_MODE, publicKey);
@@ -178,17 +190,49 @@ public class CLA {
         return publicKey;
         }
 
+        private PublicKey loadClientPublicKey() throws IOException, NoSuchAlgorithmException, InvalidKeySpecException {
+
+            // reading from resource folder
+            byte[] publicKeyBytes = PU_client.getBytes();
+
+            KeyFactory publicKeyFactory = KeyFactory.getInstance("RSA");
+            EncodedKeySpec publicKeySpec = new X509EncodedKeySpec(publicKeyBytes);
+            PublicKey publicKey = publicKeyFactory.generatePublic(publicKeySpec);
+            return publicKey;
+            }
+
 
         private PrivateKey loadPrivateKey() throws IOException, NoSuchAlgorithmException, InvalidKeySpecException {
 
             // reading from resource folder
-            byte[] privateKeyBytes = getClass().getResourceAsStream("/CLA.priv").readAllBytes();
+            byte[] privateKeyBytes = PR_cla.getBytes();
 
             KeyFactory privateKeyFactory = KeyFactory.getInstance("RSA");
             EncodedKeySpec privateKeySpec = new PKCS8EncodedKeySpec(privateKeyBytes);
             PrivateKey privateKey = privateKeyFactory.generatePrivate(privateKeySpec);
             return privateKey;
             }
+
+        public String signMessage(String messageToSign) throws IOException, NoSuchAlgorithmException, InvalidKeySpecException, InvalidKeyException, SignatureException{
+            PrivateKey privateKey = loadPrivateKey();
+
+            MessageDigest md = MessageDigest.getInstance("SHA-256");
+            byte[] messageDigest = md.digest(messageToSign.getBytes());
+        // Encrypt the message digest with the private key to create the digital signature
+            Signature signature = Signature.getInstance("SHA256withRSA");
+            signature.initSign(privateKey);
+            signature.update(messageDigest);
+            byte[] digitalSignature = signature.sign();
+
+        // Convert the digital signature to a base64-encoded string for easy representation
+        String base64DigitalSignature = Base64.getEncoder().encodeToString(digitalSignature);
+
+        // Attach the digital signature to the original data as needed
+        String digitallySignedData = messageToSign + "\n" + base64DigitalSignature;
+
+        return digitallySignedData;
+
+        }
 
     public static void main(String[] args) {
         int portNumber = 6969;
@@ -234,7 +278,7 @@ public class CLA {
                             SecureRandom secureRandom = new SecureRandom();
                             secureRandom.nextBytes(nonce2);
                             String replyToClient = new String(receivedNonce1) + "|" + new String(nonce2);
-                            String encodedReply = x.encrypt(replyToClient);
+                            String encodedReply = x.encryptWithClientPub(replyToClient);
                             x.clientOut.println(encodedReply);
 
                             String input2 = x.decrypt(inputLine);
@@ -244,10 +288,14 @@ public class CLA {
                                 break;
                             }
 
-                            //Once we confirm the user, we can send out the session keys
+                            //Once we confirm the user, we can send out the session key
                             byte[] sessionKey = x.generateKeyToDistribute();
-                            x.ctfOut.println(sessionKey);
-                            x.clientOut.println(sessionKey);
+                            String sessionKeyString = new String(sessionKey, "StandardCharsets.UTF_8");
+                            String t1 = new SimpleDateFormat("yyyy.MM.dd.HH.mm.ss").format(new java.util.Date());
+                            String sendSessionKey = sessionKeyString + "|" + t1;
+                            String signedSessionKeyMsg = x.signMessage(sendSessionKey);
+                            String sessionKeyMessage = x.encryptWithClientPub(signedSessionKeyMsg);
+                            x.clientOut.println(sessionKeyMessage);
 
                             String input3 = x.decryptWithSharedKey(inputLine);
                             if (voters.contains(input3)) //Do not allow duplicate voters
@@ -263,8 +311,11 @@ public class CLA {
                             //save new validation number to list
                             CLA.addToFile(input + " " + vc);
 
+                            //Create TimeStamp
+                            String t3 = new SimpleDateFormat("yyyy.MM.dd.HH.mm.ss").format(new java.util.Date());
+                            String sendVerificationNumber = vc + "|" + t3;
                             //Send verification number to CTF and client
-                            String encryptedOut = x.encryptWithSharedKey(vc);
+                            String encryptedOut = x.encryptWithSharedKey(sendVerificationNumber);
                             x.ctfOut.println("CLA"); //Send identity first
                             x.ctfOut.println(encryptedOut);
                             x.clientOut.println(encryptedOut);
