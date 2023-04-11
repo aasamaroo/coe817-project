@@ -182,7 +182,7 @@ public class CLA {
     private PublicKey loadPublicKey() throws IOException, NoSuchAlgorithmException, InvalidKeySpecException {
 
         // reading from resource folder
-        byte[] publicKeyBytes = getClass().getResourceAsStream("/CLA.pub").readAllBytes();
+        byte[] publicKeyBytes = PU_cla.getBytes();
 
         KeyFactory publicKeyFactory = KeyFactory.getInstance("RSA");
         EncodedKeySpec publicKeySpec = new X509EncodedKeySpec(publicKeyBytes);
