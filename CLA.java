@@ -20,12 +20,12 @@ public class CLA {
     private PrintWriter clientOut;
     private BufferedReader ctfIn;
     private BufferedReader clientIn;
-    private String PR_cla;
-    public String PU_cla;
-    private String PU_client;
+    private String PR_cla = "MIICdgIBADANBgkqhkiG9w0BAQEFAASCAmAwggJcAgEAAoGBAJGhm+G+6AvIu5TsegW+DskKrqh1nmRTciJVGwHI0ey6X5AavaaPR0fNIVnHnIzghgE44jsgnBejDRrCrQYP2ro86XU05BbgQMBKviFDm1ZVqqHg/kW+T8OVncq+VJ+gEv0lq/SzD6rI6+BtiLrH88F3RFGVv62n6ChX4/R9quDpAgMBAAECgYAIJwSfrsz1KevMUq+jBih0Oy+bWRhAlAZJ4ztDjo8n4igK3GBdBFzQaWySRtEd9syxoVJSzojGbveDFb5TXkxXdmIOIkNTIAMi7cBY7etJefDypeq4A32+mmUOgIfUwGWTYr2d1cmNuz2Cdzpkizl1rlVT+CenaBTy9WMRBp2oQQJBAKwW885gJlUMlDKZaysuk3cKom+ALaNhPN76qZoZ0KJdxovnLCgaQWzc97tHtMcUmWGwbhoC3qX4sTAeVgX2MWECQQDYo/801gHKWkIMKDj2wlEmSvdpKc55ZNRDNl6O2HQWruVkKUJZEyLLAblRSgX6T/FXC/lKU2Lr7iv2hiTiGvSJAkA90JzRE96RDEyrhEpnn3pe91XzwVIjbslDuzxy2zUDLbYlCOvml8/Kf/EIt7ArFq4l1g8mjsNVUOisxSjXSWDhAkBH/WdHFX6O0aN1CsCzLytsQCkrJxtXt6vZke2mJkOdbg0IVbWYiAVd1HrSinimD36xYGc8zaznncO6LiV/hVmRAkEAnz/72UipWBuwuDH5EGpmOnT8ln470sHGzkSL4UpXI5rloc3F68bJTGEsRwyJtwdsy2uvarAF8kaAlXh6DPkkZw==";
+    public String PU_cla = "MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQCRoZvhvugLyLuU7HoFvg7JCq6odZ5kU3IiVRsByNHsul+QGr2mj0dHzSFZx5yM4IYBOOI7IJwXow0awq0GD9q6POl1NOQW4EDASr4hQ5tWVaqh4P5Fvk/DlZ3KvlSfoBL9Jav0sw+qyOvgbYi6x/PBd0RRlb+tp+goV+P0farg6QIDAQAB";
+    private String PU_client = "MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQCqHG0CsktS7D3wuYGMbBWbM+iK7sHiMiM+VvnrgsYc3qhGU52UtjtgGPt4oxdkcM5jGFWgbGoNi+NT29JiugkLihx3MJw3RsKvFLiakvkNzr/7xH3wKkQN0FwZVpY0SfIuN4Q4nRAkKWDIxB+9vGBBXFCUmKY1w9yHEOfD8TfxJwIDAQAB";
 
 
-    private static final File file = new File(System.getProperty("user.dir") + "\\coe817-project\\CLA.txt");
+    private static final File file = new File(System.getProperty("user.dir") + "/coe817-project/CLA.txt");
     private static Scanner s;
 
     private static final ArrayList<String> voters = new ArrayList<>();
@@ -37,8 +37,8 @@ public class CLA {
     private static Integer sinNum;
 
     public CLA() throws Exception {
-         enc_cip = Cipher.getInstance("RSA/ECB/PKCS1Padding");
-         dec_cip = Cipher.getInstance("RSA/ECB/PKCS1Padding");
+         enc_cip = Cipher.getInstance("RSA");
+         dec_cip = Cipher.getInstance("RSA");
      }
 
 
@@ -49,7 +49,7 @@ public class CLA {
         Cipher cipher = Cipher.getInstance("RSA");
         cipher.init(Cipher.ENCRYPT_MODE, publicKey);
 
-        byte[] bytes = cipher.doFinal(toEncode.getBytes("StandardCharsets.UTF_8"));
+        byte[] bytes = cipher.doFinal(toEncode.getBytes());
         return new String(Base64.getEncoder().encode(bytes));
     }
 
@@ -60,7 +60,7 @@ public class CLA {
         Cipher cipher = Cipher.getInstance("RSA");
         cipher.init(Cipher.ENCRYPT_MODE, publicKey);
 
-        byte[] bytes = cipher.doFinal(toEncode.getBytes("StandardCharsets.UTF_8"));
+        byte[] bytes = cipher.doFinal(toEncode.getBytes());
         return new String(Base64.getEncoder().encode(bytes));
         }
 
@@ -76,36 +76,32 @@ public class CLA {
 
         }
 
-    public String encryptWithSharedKey(String input) throws NoSuchPaddingException, NoSuchAlgorithmException,
+    public String encryptWithSharedKey(String input, String sharedKey) throws NoSuchPaddingException, NoSuchAlgorithmException,
         InvalidAlgorithmParameterException, InvalidKeyException,
         BadPaddingException, IllegalBlockSizeException {
 
-        byte[] encodedKey = generateKeyToDistribute();
-        SecretKey key = new SecretKeySpec(encodedKey, "AES");
+        byte[] encodedKey = Base64.getDecoder().decode(sharedKey);
+        SecretKey key = new SecretKeySpec(encodedKey, "DES");
 
-        IvParameterSpec iv = new IvParameterSpec(new byte[16]);
-        Cipher cipher = Cipher.getInstance("AES");
-        cipher.init(Cipher.ENCRYPT_MODE, key, iv);
+        //IvParameterSpec iv = new IvParameterSpec(new byte[16]);
+        Cipher cipher = Cipher.getInstance("DES");
+        cipher.init(Cipher.ENCRYPT_MODE, key);
         byte[] cipherText = cipher.doFinal(input.getBytes());
-        return Base64.getEncoder()
-            .encodeToString(cipherText);
+		return new String(Base64.getEncoder().encode(cipherText));	
     }
 
-    public String decryptWithSharedKey(String input) throws NoSuchPaddingException, NoSuchAlgorithmException,
+    public String decryptWithSharedKey(String input, String sharedKey) throws NoSuchPaddingException, NoSuchAlgorithmException,
     InvalidAlgorithmParameterException, InvalidKeyException,
     BadPaddingException, IllegalBlockSizeException {
 
+        byte[] encodedKey = Base64.getDecoder().decode(sharedKey);
+        SecretKey key = new SecretKeySpec(encodedKey, "DES");
 
-        byte[] encodedKey = generateKeyToDistribute();
-        SecretKey key = new SecretKeySpec(encodedKey, "AES");
-
-        IvParameterSpec iv = new IvParameterSpec(new byte[16]);
-        Cipher cipher = Cipher.getInstance("AES");
-        cipher.init(Cipher.DECRYPT_MODE, key, iv);
-        byte[] cipherText = cipher.doFinal(input.getBytes());
-        return new String(Base64.getDecoder()
-            .decode(cipherText));
-
+        //IvParameterSpec iv = new IvParameterSpec(new byte[16]);
+        Cipher cipher = Cipher.getInstance("DES");
+        cipher.init(Cipher.DECRYPT_MODE, key);
+        byte[] cipherText = cipher.doFinal(Base64.getDecoder().decode(input.getBytes()));
+        return new String(cipherText);
     }
 
 
@@ -151,7 +147,7 @@ public class CLA {
     }
 
     public static void addToFile(String info) throws IOException {
-        File file = new File(System.getProperty("user.dir") + "\\coe817-project\\CLA.txt");
+        File file = new File(System.getProperty("user.dir") + "/coe817-project/CLA.txt");
         Scanner sc = new Scanner(file);
         ArrayList<String> lines = new ArrayList<>();
         while (sc.hasNext()) {
@@ -167,13 +163,13 @@ public class CLA {
         writer.close();
     }
 
-    public byte[] generateKeyToDistribute() throws NoSuchAlgorithmException {
+    public String generateKeyToDistribute() throws NoSuchAlgorithmException {
         // Generate cryptographic key
-        KeyGenerator keyGenerator = KeyGenerator.getInstance("AES");
+        KeyGenerator keyGenerator = KeyGenerator.getInstance("DES");
 
         SecretKey secretKey = keyGenerator.generateKey();
 
-        byte[] encodedKey = secretKey.getEncoded();
+        String encodedKey = Base64.getEncoder().encodeToString(secretKey.getEncoded());;
 
         return encodedKey;
 
@@ -181,34 +177,25 @@ public class CLA {
 
     private PublicKey loadPublicKey() throws IOException, NoSuchAlgorithmException, InvalidKeySpecException {
 
-        // reading from resource folder
-        byte[] publicKeyBytes = PU_cla.getBytes();
-
         KeyFactory publicKeyFactory = KeyFactory.getInstance("RSA");
-        EncodedKeySpec publicKeySpec = new X509EncodedKeySpec(publicKeyBytes);
+        EncodedKeySpec publicKeySpec = new X509EncodedKeySpec(Base64.getDecoder().decode(PU_cla));
         PublicKey publicKey = publicKeyFactory.generatePublic(publicKeySpec);
         return publicKey;
         }
 
         private PublicKey loadClientPublicKey() throws IOException, NoSuchAlgorithmException, InvalidKeySpecException {
 
-            // reading from resource folder
-            byte[] publicKeyBytes = PU_client.getBytes();
-
             KeyFactory publicKeyFactory = KeyFactory.getInstance("RSA");
-            EncodedKeySpec publicKeySpec = new X509EncodedKeySpec(publicKeyBytes);
+            EncodedKeySpec publicKeySpec = new X509EncodedKeySpec(Base64.getDecoder().decode(PU_client));
             PublicKey publicKey = publicKeyFactory.generatePublic(publicKeySpec);
             return publicKey;
-            }
+         }
 
 
         private PrivateKey loadPrivateKey() throws IOException, NoSuchAlgorithmException, InvalidKeySpecException {
-
-            // reading from resource folder
-            byte[] privateKeyBytes = PR_cla.getBytes();
-
+			
             KeyFactory privateKeyFactory = KeyFactory.getInstance("RSA");
-            EncodedKeySpec privateKeySpec = new PKCS8EncodedKeySpec(privateKeyBytes);
+            EncodedKeySpec privateKeySpec = new PKCS8EncodedKeySpec(Base64.getDecoder().decode(PR_cla));
             PrivateKey privateKey = privateKeyFactory.generatePrivate(privateKeySpec);
             return privateKey;
             }
@@ -216,19 +203,19 @@ public class CLA {
         public String signMessage(String messageToSign) throws IOException, NoSuchAlgorithmException, InvalidKeySpecException, InvalidKeyException, SignatureException{
             PrivateKey privateKey = loadPrivateKey();
 
-            MessageDigest md = MessageDigest.getInstance("SHA-256");
-            byte[] messageDigest = md.digest(messageToSign.getBytes());
+            //MessageDigest md = MessageDigest.getInstance("SHA-256");
+            //byte[] messageDigest = md.digest(messageToSign.getBytes());
         // Encrypt the message digest with the private key to create the digital signature
-            Signature signature = Signature.getInstance("SHA256withRSA");
+            Signature signature = Signature.getInstance("SHA1WithRSA");
             signature.initSign(privateKey);
-            signature.update(messageDigest);
+            signature.update(messageToSign.getBytes());
             byte[] digitalSignature = signature.sign();
 
         // Convert the digital signature to a base64-encoded string for easy representation
         String base64DigitalSignature = Base64.getEncoder().encodeToString(digitalSignature);
 
         // Attach the digital signature to the original data as needed
-        String digitallySignedData = messageToSign + "\n" + base64DigitalSignature;
+        String digitallySignedData = messageToSign + "|" + base64DigitalSignature;
 
         return digitallySignedData;
 
@@ -265,39 +252,45 @@ public class CLA {
                     while (true) {
 
                         inputLine = x.clientIn.readLine();
+						System.out.println("Input = " + inputLine);
+
                         if (inputLine != null) {
                             String input = x.decrypt(inputLine);
-                            System.out.println("Message received :" + input);
+                            System.out.println("Message 1 received :" + input);
 
                             //Read Nonce1 from Client
-                            String[] parts = input.split("|");
-                            byte[] receivedNonce1 = parts[0].getBytes();
+                            String[] parts = input.split("\\|");
+                            String receivedNonce1 = parts[0];
 
                             //Create Nonce2 and send it along with Nonce1 to client to confirm identity
-                            byte[] nonce2 = new byte[16];
+
                             SecureRandom secureRandom = new SecureRandom();
-                            secureRandom.nextBytes(nonce2);
-                            String replyToClient = new String(receivedNonce1) + "|" + new String(nonce2);
+                            int nonce2 = secureRandom.nextInt();
+							System.out.println("Generate nonce 2 = " + nonce2);
+                            String replyToClient = receivedNonce1 + "|" + nonce2;
                             String encodedReply = x.encryptWithClientPub(replyToClient);
+							System.out.println(encodedReply);
                             x.clientOut.println(encodedReply);
 
-                            String input2 = x.decrypt(inputLine);
-                            System.out.print("Message received: " + input2);
+                            String input2 = x.decrypt(x.clientIn.readLine());
+                            System.out.println("Message 3 received: " + input2);
                             //Check if nonce matches up
-                            if(!input2.equals(nonce2.toString())){
+                            if(!input2.equals(Integer.toString(nonce2))){
                                 break;
                             }
 
                             //Once we confirm the user, we can send out the session key
-                            byte[] sessionKey = x.generateKeyToDistribute();
-                            String sessionKeyString = new String(sessionKey, "StandardCharsets.UTF_8");
+                            String sessionKey = x.generateKeyToDistribute();
+                            String sessionKeyString = new String(sessionKey);
                             String t1 = new SimpleDateFormat("yyyy.MM.dd.HH.mm.ss").format(new java.util.Date());
-                            String sendSessionKey = sessionKeyString + "|" + t1;
+                            String sendSessionKey = sessionKey + "|" + t1;
                             String signedSessionKeyMsg = x.signMessage(sendSessionKey);
-                            String sessionKeyMessage = x.encryptWithClientPub(signedSessionKeyMsg);
+							System.out.println("Message + signature = " + signedSessionKeyMsg);
+                            String sessionKeyMessage = x.encryptWithClientPub(sendSessionKey);
+							
                             x.clientOut.println(sessionKeyMessage);
-
-                            String input3 = x.decryptWithSharedKey(inputLine);
+							
+                            String input3 = x.decryptWithSharedKey(x.clientIn.readLine(),sessionKey);
                             if (voters.contains(input3)) //Do not allow duplicate voters
                                 break;
                             voters.add((input3));
@@ -315,7 +308,7 @@ public class CLA {
                             String t3 = new SimpleDateFormat("yyyy.MM.dd.HH.mm.ss").format(new java.util.Date());
                             String sendVerificationNumber = vc + "|" + t3;
                             //Send verification number to CTF and client
-                            String encryptedOut = x.encryptWithSharedKey(sendVerificationNumber);
+                            String encryptedOut = x.encryptWithSharedKey(sendVerificationNumber,sessionKey);
                             x.ctfOut.println("CLA"); //Send identity first
                             x.ctfOut.println(encryptedOut);
                             x.clientOut.println(encryptedOut);
@@ -335,11 +328,14 @@ public class CLA {
                     System.out.println("Done.\n");
 
                 } catch (Exception e) {
+					System.out.println(e);
+					e.printStackTrace();
                     x.ctfOut.close();
                     x.ctfIn.close();
                     x.clientOut.close();
                     x.clientIn.close();
                     System.out.println("Connection lost, closing connection.");
+					break;
                 }
             }
 
