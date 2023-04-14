@@ -12,6 +12,8 @@ import javax.crypto.spec.*;
 import java.time.*;
 import java.net.*;
 import java.util.*;
+import java.util.Timer;
+
 import javax.swing.*;
 import java.nio.file.*;
 import java.text.*;
@@ -54,14 +56,6 @@ public class Client extends JFrame {
 	static String privateKeyStringClient = "MIICdwIBADANBgkqhkiG9w0BAQEFAASCAmEwggJdAgEAAoGBAKocbQKyS1LsPfC5gYxsFZsz6IruweIyIz5W+euCxhzeqEZTnZS2O2AY+3ijF2RwzmMYVaBsag2L41Pb0mK6CQuKHHcwnDdGwq8UuJqS+Q3Ov/vEffAqRA3QXBlWljRJ8i43hDidECQpYMjEH728YEFcUJSYpjXD3IcQ58PxN/EnAgMBAAECgYBAfX1QR+KpgblrwRAdeb5pM/EldqWXSNW2pQejYtUTjc/ytXFotvtkj6QKVJ4iLGf6Bngz1NYR46YfnRcx6YBSuczR3qQxuSMtQWxVqDQskYCN2sYrJ9t0te0zfr0weuiFY9l0OdObFTkAd0chGSSkDIPEf7u9rG7BUWpsyMOdzQJBALmZz9dJD6DfjthWV3cELpw0JX4SiK4tECN8QpFF6I4c8K6LMGrPzhLQYZA7VMS/ygs7fl1XgMnQPdfkifcHXtUCQQDqoobA7ssWLtAL5iIHYxEfQamNwb6fZjxdM7zJFoqdtcz/55JYWIJ3xKFqZH28mDdMYsLO1UDY7XRwkUlOpmYLAkEAnx/cLfuZxpdk5N3Bx2xyecHLkzdYr9w6xfG3MM37ADyXrU3wiOL5DvBRdVMo7jZwhwjO4kAvTteW7g4mqwBKsQJBAOBEQorMc98bFY4aBHKNFUOL7nVpNzuCa7YmCo8l9Y4yw+PhwraguuuhTSu1K52E3G4tg8hQevAdXwttQuVjFOsCQB0c5Zm7stigRm/MklNQfOCBLKZDjaGNRoyYkOCIxq/RZEYLA5UD4GucZPNi2xDuf0H71HVBmlq+g7bH3g5cHpQ=";
 
 	public Client() throws Exception, FileNotFoundException {
-		// to CLA
-		sockCla = new Socket("localhost", 6969);
-		outCla = new PrintWriter(sockCla.getOutputStream(), true);
-		inCla = new BufferedReader(new InputStreamReader(sockCla.getInputStream()));
-		// to CTF
-		sockCtf = new Socket("localhost", 9090);
-		outCtf = new PrintWriter(sockCtf.getOutputStream(), true);
-		inCtf = new BufferedReader(new InputStreamReader(sockCtf.getInputStream()));
 
 		ArrayList<String> voters = new ArrayList<>();
 		File votersFile = new File("valid_voter_ids.txt");
@@ -108,7 +102,11 @@ public class Client extends JFrame {
 			frame.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
 			frame.setSize(300, 300);
 			frame.setVisible(true);
+
+			sockCtf.close();
+			sockCla.close();
 		} else {
+
 			for (int i = 0; i < voters.size(); i++) {
 				System.out.println("valid voters: " + voters.get(i));
 			}
@@ -162,7 +160,16 @@ public class Client extends JFrame {
 			login.addActionListener(new ActionListener() {
 				@Override
 				public void actionPerformed(ActionEvent arg0) {
+
 					try {
+						// to CLA
+						sockCla = new Socket("localhost", 6969);
+						outCla = new PrintWriter(sockCla.getOutputStream(), true);
+						inCla = new BufferedReader(new InputStreamReader(sockCla.getInputStream()));
+						// to CTF
+						sockCtf = new Socket("localhost", 9090);
+						outCtf = new PrintWriter(sockCtf.getOutputStream(), true);
+						inCtf = new BufferedReader(new InputStreamReader(sockCtf.getInputStream()));
 						System.out.println(sin.getText());
 						alreadyVoted = new ArrayList<>();
 						File votedFile = new File("already_voted.txt");
@@ -265,12 +272,31 @@ public class Client extends JFrame {
 							noAuth.add(text);
 							container.add(noAuth, "5");
 							cl.show(container, "5");
+							Timer timer = new Timer();
+							timer.schedule(new TimerTask() {
+								@Override
+								public void run() {
+									cl.show(container, "1");
+								}
+							}, 2000);
+							sockCtf.close();
+							sockCla.close();
 						} else {
 							JPanel noAuth = new JPanel();
 							JLabel text = new JLabel("Not a Valid Voter");
 							noAuth.add(text);
 							container.add(noAuth, "4");
 							cl.show(container, "4");
+							Timer timer = new Timer();
+							timer.schedule(new TimerTask() {
+								@Override
+								public void run() {
+									cl.show(container, "1");
+								}
+							}, 2000);
+
+							sockCtf.close();
+							sockCla.close();
 						}
 					} catch (Exception e) {
 						System.out.println(e);
@@ -342,7 +368,6 @@ public class Client extends JFrame {
 						}
 
 						cl.show(container, "1");
-
 						if (voters.isEmpty()) {
 							{
 								// send message 9 E(KShared,"Finished")
@@ -363,6 +388,8 @@ public class Client extends JFrame {
 								writer3.write(decryptedMessage10);
 								writer3.close();
 							}
+							sockCtf.close();
+							sockCla.close();
 						}
 					} catch (Exception e) {
 						System.out.println(e);
