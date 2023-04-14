@@ -230,13 +230,13 @@ public class Client extends JFrame {
 
 			            String fromServer;
 			            
-			            if (!voters.isEmpty()) { 
-			                outCtf.println("Client");
+			            if (!voters.isEmpty()) {
 
 			                System.out.println("Sending to CTF: " + validationNum + "|" + candidate + "|" + sin.getText());
 			                // encrypt and encode this entire string before writing
 							// send message 8 E(KShared,validationNumber|Candidate|t4)
-							String message8 = validationNum + "|" + candidate + "|" + sin.getText();
+						    Instant t1 = Instant.now();
+							String message8 = validationNum + "|" + candidate + "|" + sin.getText() + "|" + t1;
 							System.out.println("Message 8 = " + message8);
 							String encryptedMessage8 = desEncryptMessage(message8,sharedKey);
 			                outCtf.println(encryptedMessage8);
@@ -324,3 +324,4 @@ public class Client extends JFrame {
         return new String(decryptedBytes);
     }
 }
+

@@ -8,7 +8,8 @@ import java.net.*;
 import java.nio.file.Files;
 import java.security.spec.*;
 import javax.crypto.spec.*;
-
+import java.time.Instant;
+import java.time.Duration;
 
 public class CLA {
 
@@ -255,6 +256,7 @@ public class CLA {
 						System.out.println("Input = " + inputLine);
 
                         if (inputLine != null) {
+                            //Message 1
                             String input = x.decrypt(inputLine);
                             System.out.println("Message 1 received :" + input);
 
@@ -263,7 +265,7 @@ public class CLA {
                             String receivedNonce1 = parts[0];
 
                             //Create Nonce2 and send it along with Nonce1 to client to confirm identity
-
+                            //Meesage 2
                             SecureRandom secureRandom = new SecureRandom();
                             int nonce2 = secureRandom.nextInt();
 							System.out.println("Generate nonce 2 = " + nonce2);
@@ -272,25 +274,29 @@ public class CLA {
 							System.out.println(encodedReply);
                             x.clientOut.println(encodedReply);
 
-                            String input2 = x.decrypt(x.clientIn.readLine());
+                            //Message 3
+                            String input2 = x.clientIn.readLine();
+                            input2 = x.decrypt(input2);
                             System.out.println("Message 3 received: " + input2);
                             //Check if nonce matches up
                             if(!input2.equals(Integer.toString(nonce2))){
                                 break;
                             }
 
+
                             //Once we confirm the user, we can send out the session key
                             String sessionKey = x.generateKeyToDistribute();
-                            String sessionKeyString = new String(sessionKey);
-                            String t1 = new SimpleDateFormat("yyyy.MM.dd.HH.mm.ss").format(new java.util.Date());
+                            Instant t1 = Instant.now();
                             String sendSessionKey = sessionKey + "|" + t1;
                             String signedSessionKeyMsg = x.signMessage(sendSessionKey);
 							System.out.println("Message + signature = " + signedSessionKeyMsg);
                             String sessionKeyMessage = x.encryptWithClientPub(sendSessionKey);
-							
+							//Message 4
                             x.clientOut.println(sessionKeyMessage);
 							
-                            String input3 = x.decryptWithSharedKey(x.clientIn.readLine(),sessionKey);
+                            //Message 6
+                            String input3 = x.clientIn.readLine();
+                            input3 = x.decryptWithSharedKey(input3,sessionKey);
                             if (voters.contains(input3)) //Do not allow duplicate voters
                                 break;
                             voters.add((input3));
@@ -302,13 +308,14 @@ public class CLA {
                             String vc = generateVerfication();
 
                             //save new validation number to list
-                            CLA.addToFile(input + " " + vc);
+                            //CLA.addToFile(input + " " + vc);
 
                             //Create TimeStamp
-                            String t3 = new SimpleDateFormat("yyyy.MM.dd.HH.mm.ss").format(new java.util.Date());
+                            Instant t3 = Instant.now();
                             String sendVerificationNumber = vc + "|" + t3;
                             //Send verification number to CTF and client
                             String encryptedOut = x.encryptWithSharedKey(sendVerificationNumber,sessionKey);
+                             //Message 7
                             x.ctfOut.println("CLA"); //Send identity first
                             x.ctfOut.println(encryptedOut);
                             x.clientOut.println(encryptedOut);
@@ -345,3 +352,4 @@ public class CLA {
     }
 
 }
+

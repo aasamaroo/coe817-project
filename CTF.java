@@ -37,7 +37,7 @@ public class CTF extends Thread{
     static String publicstringCTF =  "MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQCxnJXfl0iqJAWvaM2jNvSa58TRePoaz7J3PMi9pXcdbe6yJRMXFku6k4k7OD3OgKU6pOAOvjeUZK8vJXh/MqOWWCUuwQ3y39fon2xF0etSQEx95qtrYYp5QPJyz2UIfJzFLZKG/WxQJcxWIQToTR3WuSACmA7FgGK5Kfk8qgDUNwIDAQAB";
     static String pubkeystringClient = "MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQCqHG0CsktS7D3wuYGMbBWbM+iK7sHiMiM+VvnrgsYc3qhGU52UtjtgGPt4oxdkcM5jGFWgbGoNi+NT29JiugkLihx3MJw3RsKvFLiakvkNzr/7xH3wKkQN0FwZVpY0SfIuN4Q4nRAkKWDIxB+9vGBBXFCUmKY1w9yHEOfD8TfxJwIDAQAB";
     static String pubkeystringCLA = "MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQCRoZvhvugLyLuU7HoFvg7JCq6odZ5kU3IiVRsByNHsul+QGr2mj0dHzSFZx5yM4IYBOOI7IJwXow0awq0GD9q6POl1NOQW4EDASr4hQ5tWVaqh4P5Fvk/DlZ3KvlSfoBL9Jav0sw+qyOvgbYi6x/PBd0RRlb+tp+goV+P0farg6QIDAQAB";        
-    static String sharedKey = "temp";
+    static String sharedKey = null;
     static boolean lastMessage = false;
     private Socket socket = null;
 
@@ -57,156 +57,167 @@ public class CTF extends Thread{
                 new BufferedReader(
                     new InputStreamReader(System.in));
         
-            String connectionLine = in.readLine();
-            System.out.println(connectionLine);        
-            if (connectionLine.equalsIgnoreCase("CLA")) {
-				System.out.println("Shared key = " + sharedKey);
+            String connectionLine;
+            while ((connectionLine = in.readLine()) != null) {
+                System.out.println(connectionLine);
+                if (connectionLine.equalsIgnoreCase("CLA")) {
+                    while (sharedKey == null) {
+                      Thread.sleep(500);
+                    }
+                    System.out.println("Shared key = " + sharedKey);
 
-                byte[] decodedKey = Base64.getDecoder().decode(sharedKey);
-                SecretKey originalKey = new SecretKeySpec(decodedKey, "DES");
-                Cipher decrypt = Cipher.getInstance("DES");
+                    byte[] decodedKey = Base64.getDecoder().decode(sharedKey);
+                    SecretKey originalKey = new SecretKeySpec(decodedKey, "DES");
+                    Cipher decrypt = Cipher.getInstance("DES");
 
-                decrypt.init(Cipher.DECRYPT_MODE, originalKey);
-                Cipher encrypt = Cipher.getInstance("DES");
-                encrypt.init(Cipher.ENCRYPT_MODE, originalKey);
+                    decrypt.init(Cipher.DECRYPT_MODE, originalKey);
+                    Cipher encrypt = Cipher.getInstance("DES");
+                    encrypt.init(Cipher.ENCRYPT_MODE, originalKey);
 
-                if (!candidate_list.containsKey("Cungang")) {
-                    candidate_list.put("Cungang", 0);
-                    candidate_list.put("Krista", 0);
-                    candidate_list.put("William", 0);
-                    candidate_list.put("Oscar", 0);
-                    candidate_list.put("Alexander", 0);
+                    if (!candidate_list.containsKey("Cunggang")) {
+                        candidate_list.put("Cungang", 0);
+                        candidate_list.put("Krista", 0);
+                        candidate_list.put("William", 0);
+                        candidate_list.put("Oscar", 0);
+                        candidate_list.put("Alexander", 0);
+                    }
+
+                    String inputLine;
+                    while ((inputLine = in.readLine()) != null) {
+
+                        byte[] decode = Base64.getDecoder().decode(inputLine);
+                        byte[] decrypted = decrypt.doFinal(decode);
+                        String[] splitText = new String(decrypted).split("\\|");
+                        System.out.println(splitText[0]); //Validation Number
+                        System.out.println(splitText[1]); //Time stamp
+
+                        Instant instant = Instant.parse(splitText[1]);
+                        Instant now = Instant.now();
+                        Duration dur = Duration.between(now, instant);
+                        if (dur.getSeconds() < 1)
+                            System.out.println("Valid time");
+
+                        if (!validation_list.containsKey(splitText[0])) { //Discard Potential Duplicate Validation Numbers
+                            validation_list.put(splitText[0], false);
+                        }
+                    }
+
                 }
+                else if (connectionLine.equalsIgnoreCase("Client")) {
+                    String keyExchange = in.readLine();
+                    System.out.println("From client = " + keyExchange);
 
-                String inputLine;
-                while ((inputLine = in.readLine()) != null) {
+                    KeyFactory kf = KeyFactory.getInstance("RSA");
+                    PKCS8EncodedKeySpec X509priv = new PKCS8EncodedKeySpec(Base64.getDecoder().decode(privatekeyString));
+                    privateKey = kf.generatePrivate(X509priv);
 
-                    byte[] decode = Base64.getDecoder().decode(inputLine);
-                    byte[] decrypted = decrypt.doFinal(decode);
-                    String[] splitText = new String(decrypted).split("\\|");
-                    System.out.println(splitText[0]); //Validation Number
-                    System.out.println(splitText[1]); //Time stamp
+                    X509EncodedKeySpec X509publicKey = new X509EncodedKeySpec(Base64.getDecoder().decode(pubkeystringCLA));
+                    publicKeyCLA = kf.generatePublic(X509publicKey);
 
-                    Instant instant = Instant.parse(splitText[1]);
+                    X509EncodedKeySpec X509pub = new X509EncodedKeySpec(Base64.getDecoder().decode(pubkeystringClient));
+                    publicKeyClient = kf.generatePublic(X509pub); 
+
+                    Cipher cipher = Cipher.getInstance("RSA");
+                    cipher.init(Cipher.DECRYPT_MODE, privateKey);
+                    
+                    System.out.println("pub/priv keys made");
+                    
+                    byte[] decrypta = cipher.doFinal(Base64.getDecoder().decode(keyExchange.getBytes()));
+                    keyExchange = new String(decrypta);
+                    System.out.println("decrypted values = " + keyExchange);
+                    String[] values = keyExchange.split("\\|");
+                    sharedKey = values[0];
+                    System.out.println("Shared key = " + sharedKey);
+                    String time = values[1];
+                    //String signature = values[2];
+                    
+                    //Verify timestamp
+                    Instant instant = Instant.parse(time);
                     Instant now = Instant.now();
                     Duration dur = Duration.between(now, instant);
                     if (dur.getSeconds() < 1)
                         System.out.println("Valid time");
 
-                    if (!validation_list.containsKey(splitText[0])) { //Discard Potential Duplicate Validation Numbers
-                        validation_list.put(splitText[0], false);
+                    //Verify Signature
+                    /*
+                    Signature sr = Signature.getInstance("SHA1WithRSA");
+                    sr.initVerify(publicKeyClient);
+                    sr.update(signature.getBytes());
+                    if (sr.verify(Base64.getDecoder().decode(sharedKey + "|" + time))) {
+                        System.out.println("Verified");
+                    } else {
+                        System.out.println("Not Valid");
                     }
-                }
+                    */
 
-            }
-            else if (connectionLine.equalsIgnoreCase("Client")) {
-                String keyExchange = in.readLine();
-				System.out.println("From client = " + keyExchange);
+                    //Instantiate encrypter and decrypter shared key
+                    byte[] keyBytes = Base64.getDecoder().decode(sharedKey);
+                    SecretKey secretKey = new SecretKeySpec(keyBytes, "DES");
+                    Cipher decrypt = Cipher.getInstance("DES");
+                    decrypt.init(Cipher.DECRYPT_MODE, secretKey);
+                    Cipher encrypt = Cipher.getInstance("DES");
+                    encrypt.init(Cipher.ENCRYPT_MODE, secretKey);
 
-                KeyFactory kf = KeyFactory.getInstance("RSA");
-                PKCS8EncodedKeySpec X509priv = new PKCS8EncodedKeySpec(Base64.getDecoder().decode(privatekeyString));
-                privateKey = kf.generatePrivate(X509priv);
+                    String inputLine;
+                    while ((inputLine = in.readLine()) != null) {
+                        System.out.println("Voting message: " + inputLine);
+                        byte[] decode = Base64.getDecoder().decode(inputLine);
+                        byte[] decrypted = decrypt.doFinal(decode);
+                        
+                        String[] splitText = new String(decrypted).split("\\|");
 
-                X509EncodedKeySpec X509publicKey = new X509EncodedKeySpec(Base64.getDecoder().decode(pubkeystringCLA));
-                publicKeyCLA = kf.generatePublic(X509publicKey);
-
-                X509EncodedKeySpec X509pub = new X509EncodedKeySpec(Base64.getDecoder().decode(pubkeystringClient));
-                publicKeyClient = kf.generatePublic(X509pub); 
-
-                Cipher cipher = Cipher.getInstance("RSA");
-                cipher.init(Cipher.DECRYPT_MODE, privateKey);
-				
-				System.out.println("pub/priv keys made");
-                
-				byte[] decrypta = cipher.doFinal(Base64.getDecoder().decode(keyExchange.getBytes()));
-                keyExchange = new String(decrypta);
-                System.out.println("decrypted values = " + keyExchange);
-                String[] values = keyExchange.split("\\|");
-                sharedKey = values[0];
-				System.out.println("Shared key = " + sharedKey);
-                String time = values[1];
-                String signature = values[2];
-                
-                //Verify timestamp
-                Instant instant = Instant.parse(time);
-                Instant now = Instant.now();
-                Duration dur = Duration.between(now, instant);
-                if (dur.getSeconds() < 1)
-                    System.out.println("Valid time");
-
-                //Verify Signature
-                Signature sr = Signature.getInstance("SHA1WithRSA");
-                sr.initVerify(publicKeyClient);
-                sr.update(signature.getBytes());
-                if (sr.verify(Base64.getDecoder().decode(sharedKey + "|" + time))) {
-                    System.out.println("Verified");
-                } else {
-                    System.out.println("Not Valid");
-                }
-
-                //Instantiate encrypter and decrypter shared key
-                byte[] decodedKey = sharedKey.getBytes();
-                SecretKey originalKey = new SecretKeySpec(decodedKey, "DES");
-                Cipher decrypt = Cipher.getInstance("DES/CBC/PKCS5Padding");
-                IvParameterSpec iv2 = new IvParameterSpec(new byte[8]);
-                decrypt.init(Cipher.DECRYPT_MODE, originalKey, iv2);
-                Cipher encrypt = Cipher.getInstance("DES/CBC/PKCS5Padding");
-                encrypt.init(Cipher.ENCRYPT_MODE, originalKey, iv2);
-
-                String inputLine;
-                while ((inputLine = in.readLine()) != null) {
-                    byte[] decode = Base64.getDecoder().decode(inputLine);
-                    byte[] decrypted = decrypt.doFinal(decode);
-                    
-                    String[] splitText = new String(decrypted).split("\\|");
-
-                    //Break on finished message
-                    if (splitText[0].equalsIgnoreCase("finished")) {
-                        lastMessage = true;
-                        break;
-                    }
-
-                    System.out.println(splitText[0]); //Validation Number
-                    System.out.println(splitText[1]); //Candidate
-                    System.out.println(splitText[2]); //Id
-                    System.out.println(splitText[3]); //Time stamp
-
-                    instant = Instant.parse(splitText[3]);
-                    dur = Duration.between(now, instant);
-                    if (dur.getSeconds() < 1)
-                        System.out.println("Valid time");
-
-                    if (validation_list.containsKey(splitText[0]) == false && voter_list.containsKey(splitText[2]) == false) {
-                        for (Map.Entry<String, Boolean> entry : validation_list.entrySet()) {
-                            if (entry.getKey().equals(splitText[0])) {
-                                entry.setValue(true);
-                                break;
-                            }
+                        //Break on finished message
+                        if (splitText[0].equalsIgnoreCase("finished")) {
+                            lastMessage = true;
+                            break;
                         }
-                        for (Map.Entry<String, Integer> entry : candidate_list.entrySet()) {
-                            if (entry.getKey().equals(splitText[1])) {
-                                entry.setValue(entry.getValue() + 1);
-                                break;
+
+                        System.out.println(splitText[0]); //Validation Number
+                        System.out.println(splitText[1]); //Candidate
+                        System.out.println(splitText[2]); //Id
+                        System.out.println(splitText[3]); //Time stamp
+
+                        instant = Instant.parse(splitText[3]);
+                        dur = Duration.between(now, instant);
+                        if (dur.getSeconds() < 1)
+                            System.out.println("Valid time");
+
+                        if (validation_list.containsKey(splitText[0]) && voter_list.containsKey(splitText[2]) == false) {
+                            for (Map.Entry<String, Boolean> entry : validation_list.entrySet()) {
+                                if (entry.getKey().equalsIgnoreCase(splitText[0])) {
+                                    entry.setValue(true);
+                                    break;
+                                }
                             }
+                            for (Map.Entry<String, Integer> entry : candidate_list.entrySet()) {
+                                if (entry.getKey().equalsIgnoreCase(splitText[1])) {
+                                    entry.setValue(entry.getValue() + 1);
+                                    break;
+                                }
+                            }
+                            voter_list.put(splitText[2], splitText[1]); //Voter id and candidate
                         }
-                        voter_list.put(splitText[2], splitText[1]); //Voter id and candidate
+                        sharedKey = null;
+                        for (Map.Entry<String, Integer> set : candidate_list.entrySet()) {
+                            System.out.println(set.getKey() + " = " + set.getValue());
+                        }
                     }
-                    
+                    String output = null;
+                    for (Map.Entry<String, Integer> set : candidate_list.entrySet()) {
+                        System.out.println(set.getKey() + " = " + set.getValue());
+
+                        String message = set.getKey() + "|" + set.getValue();
+
+                        if (output == null)
+                            output = message;
+                        else 
+                            output += "|" + message;
+
+                    }
+                    byte[] encrypted = encrypt.doFinal(output.getBytes());
+                    out.println(Base64.getEncoder().encodeToString(encrypted)); //Sends results to client
                 }
-                String output = null;
-                for (Map.Entry<String, Integer> set : candidate_list.entrySet()) {
-                    System.out.println(set.getKey() + " = " + set.getValue());
-
-                    String message = set.getKey() + "|" + set.getValue();
-
-                    if (output == null)
-                        output = message;
-                    else 
-                        output += "|" + message;
-
-                }
-                byte[] encrypted = encrypt.doFinal(output.getBytes());
-                out.println(Base64.getEncoder().encodeToString(encrypted)); //Sends results to client
+                break;
             }
 
             System.out.println("Done");
@@ -218,4 +229,5 @@ public class CTF extends Thread{
         }
     }
 }
+
 
