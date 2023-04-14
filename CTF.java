@@ -75,7 +75,7 @@ public class CTF extends Thread{
                     encrypt.init(Cipher.ENCRYPT_MODE, originalKey);
 
                     if (!candidate_list.containsKey("Cunggang")) {
-                        candidate_list.put("Cungang", 0);
+                        candidate_list.put("Cunggang", 0);
                         candidate_list.put("Krista", 0);
                         candidate_list.put("William", 0);
                         candidate_list.put("Oscar", 0);
