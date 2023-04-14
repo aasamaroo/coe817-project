@@ -2,7 +2,7 @@
  * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
  */
 
-//package coe817project;
+package coe817project;
 
 import java.awt.event.*;
 import java.awt.*;
@@ -146,7 +146,6 @@ public class Client extends JFrame {
 			        	cipherDecryptClientPriv.init(Cipher.DECRYPT_MODE, privateKey);
 
 						// send message 1 E(KpuCla,nonce1)
-
 			            SecureRandom secureRandom = new SecureRandom();
 						int nonce1 = secureRandom.nextInt();
 						String message1 = nonce1+"";
@@ -167,21 +166,23 @@ public class Client extends JFrame {
 						String message3Encrypted = rsaEncryptMessage(message3,cipherEncryptClaPub);
 						outCla.println(message3Encrypted);
 
-						// recieve message 4 E(KpuClient,KShared|t1|sig(KprCla,KShared|t1))
+						// recieve message 4 E(KpuClient,KShared|t1)|sig(KprCla,KShared|t1)
 						String message4 = inCla.readLine();
-						String message4Decrypted = rsaDecryptMessage(message4,cipherDecryptClientPriv);
+						String[] message4Split = message4.split("\\|");
+						String message4Decrypted = rsaDecryptMessage(message4Split[0],cipherDecryptClientPriv);
 						System.out.println("Message 4 = " + message4Decrypted);
 						// decrypt
 						String[] partsMessage4 = message4Decrypted.split("\\|");
 						sharedKey = partsMessage4[0];
+						byte[] test = Base64.getDecoder().decode(message4Split[1]);
 
 						// send message 5 to CTF -- basically just forward message 4 -- E(KpuCtf,KShared|t1|sig(KprCla,KShared|t1))
 						String message5 = message4Decrypted;
 						System.out.println("Message 5 = " + message5);
 						String message5EncryptedCTF = rsaEncryptMessage(message4Decrypted,cipherEncryptCtfPub);
-						System.out.println("Encrypted message 5 = " + message5EncryptedCTF);
+						System.out.println("Encrypted message 5 = " + message5EncryptedCTF + "|" + message4Split[1]);
 						outCtf.println("Client");
-						outCtf.println(message5EncryptedCTF);
+						outCtf.println(message5EncryptedCTF + "|" + message4Split[1]);
 
 						// send message 6 E(KShared, id|t2)				
 						String id = sin.getText();

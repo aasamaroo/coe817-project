@@ -213,10 +213,10 @@ public class CLA {
             byte[] digitalSignature = signature.sign();
 
         // Convert the digital signature to a base64-encoded string for easy representation
-        String base64DigitalSignature = Base64.getEncoder().encodeToString(digitalSignature);
+        String base64DigitalSignature = new String(Base64.getEncoder().encode(digitalSignature));
 
         // Attach the digital signature to the original data as needed
-        String digitallySignedData = messageToSign + "|" + base64DigitalSignature;
+        String digitallySignedData = base64DigitalSignature;
 
         return digitallySignedData;
 
@@ -289,10 +289,11 @@ public class CLA {
                             Instant t1 = Instant.now();
                             String sendSessionKey = sessionKey + "|" + t1;
                             String signedSessionKeyMsg = x.signMessage(sendSessionKey);
-							System.out.println("Message + signature = " + signedSessionKeyMsg);
+							byte[] test = Base64.getDecoder().decode(signedSessionKeyMsg);
+							System.out.println("Message + signature = " + sendSessionKey + " " + signedSessionKeyMsg);
                             String sessionKeyMessage = x.encryptWithClientPub(sendSessionKey);
 							//Message 4
-                            x.clientOut.println(sessionKeyMessage);
+                            x.clientOut.println(sessionKeyMessage + "|" + signedSessionKeyMsg);
 							
                             //Message 6
                             String input3 = x.clientIn.readLine();

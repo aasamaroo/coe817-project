@@ -88,8 +88,8 @@ public class CTF extends Thread{
                         byte[] decode = Base64.getDecoder().decode(inputLine);
                         byte[] decrypted = decrypt.doFinal(decode);
                         String[] splitText = new String(decrypted).split("\\|");
-                        System.out.println(splitText[0]); //Validation Number
-                        System.out.println(splitText[1]); //Time stamp
+                        System.out.println("Validation number from CLA = " + splitText[0]); //Validation Number
+                        System.out.println("Timestamp from CLA = " + splitText[1]); //Time stamp
 
                         Instant instant = Instant.parse(splitText[1]);
                         Instant now = Instant.now();
@@ -121,15 +121,16 @@ public class CTF extends Thread{
                     cipher.init(Cipher.DECRYPT_MODE, privateKey);
                     
                     System.out.println("pub/priv keys made");
-                    
-                    byte[] decrypta = cipher.doFinal(Base64.getDecoder().decode(keyExchange.getBytes()));
+                    String[] splitKeyExchange = keyExchange.split("\\|");
+                    byte[] decrypta = cipher.doFinal(Base64.getDecoder().decode(splitKeyExchange[0].getBytes()));
                     keyExchange = new String(decrypta);
                     System.out.println("decrypted values = " + keyExchange);
                     String[] values = keyExchange.split("\\|");
                     sharedKey = values[0];
                     System.out.println("Shared key = " + sharedKey);
                     String time = values[1];
-                    //String signature = values[2];
+                    String signature = splitKeyExchange[1];
+					System.out.println("Digital signature = "+  signature);
                     
                     //Verify timestamp
                     Instant instant = Instant.parse(time);
@@ -139,17 +140,16 @@ public class CTF extends Thread{
                         System.out.println("Valid time");
 
                     //Verify Signature
-                    /*
+                    
                     Signature sr = Signature.getInstance("SHA1WithRSA");
-                    sr.initVerify(publicKeyClient);
-                    sr.update(signature.getBytes());
-                    if (sr.verify(Base64.getDecoder().decode(sharedKey + "|" + time))) {
+                    sr.initVerify(publicKeyCLA);
+                    sr.update((sharedKey + "|" + time).getBytes());
+                    if (sr.verify(Base64.getDecoder().decode(splitKeyExchange[1]))) {
                         System.out.println("Verified");
                     } else {
                         System.out.println("Not Valid");
                     }
-                    */
-
+                    
                     //Instantiate encrypter and decrypter shared key
                     byte[] keyBytes = Base64.getDecoder().decode(sharedKey);
                     SecretKey secretKey = new SecretKeySpec(keyBytes, "DES");
